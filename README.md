@@ -2,6 +2,42 @@
 
 Terraform module for creating and managing AWS WAFv2 Web ACLs with managed rules, rate limiting, geoblocking, Bot Control, IP sets, custom rules, and logging.
 
+## Architecture
+
+```mermaid
+flowchart TB
+    Client[Client Request] --> CF[CloudFront / ALB / API GW]
+
+    subgraph WAF["AWS WAFv2 Web ACL"]
+        direction TB
+        R1[Managed Rules: Common Rule Set]
+        R2[Managed Rules: SQL Injection]
+        R3[Managed Rules: Known Bad Inputs]
+        R4[Bot Control]
+        R5[Rate Limiting]
+        R6[Geo-Blocking]
+        R7[IP Allowlist / Blocklist]
+        R8[Custom Rules]
+    end
+
+    CF --> WAF
+
+    WAF -->|ALLOW| App[Application]
+    WAF -->|BLOCK| Block[403 Forbidden]
+    WAF -->|COUNT| Metrics[CloudWatch Metrics]
+
+    subgraph Logging["WAF Logging"]
+        WAF --> KF[Kinesis Firehose]
+        WAF --> CWL[CloudWatch Logs]
+        WAF --> S3L[S3 Bucket]
+    end
+
+    style WAF fill:#FF9900,color:#fff
+    style Logging fill:#1A73E8,color:#fff
+    style App fill:#3F8624,color:#fff
+    style Block fill:#DD344C,color:#fff
+```
+
 ## Features
 
 - AWS WAFv2 Web ACL with configurable default action (allow/block)
