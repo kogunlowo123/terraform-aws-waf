@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>terraform-aws-waf | Architecture</title>
+<style>
+:root{--ink:#0b0c0b;--ink2:#141514;--ink3:#1e1f1e;--border:#2a2b2a;--text:#c8c9c8;--text2:#9a9b9a;--accent:#c8420a;--accent2:#e05a1a;--green:#2ecc71;--blue:#3498db;--yellow:#f1c40f;--red:#e74c3c;--purple:#9b59b6;--mono:"SF Mono","Fira Code","Fira Mono","Roboto Mono",monospace}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--ink);color:var(--text);font-family:var(--mono);font-size:14px;line-height:1.7}
+a{color:var(--accent2);text-decoration:none}a:hover{text-decoration:underline}
+.container{max-width:1200px;margin:0 auto;padding:0 24px}
+header{border-bottom:1px solid var(--border);padding:32px 0}
+header h1{font-size:28px;color:#fff;font-weight:700}header h1 span{color:var(--accent)}
+header p.sub{color:var(--text2);margin-top:6px;font-size:13px}
+.badge{display:inline-block;padding:2px 10px;border-radius:3px;font-size:11px;font-weight:600;margin-right:6px;margin-top:8px}
+.badge-tf{background:#623ce4;color:#fff}.badge-aws{background:#ff9900;color:#111}.badge-mit{background:#2ecc71;color:#111}
+section{padding:40px 0;border-bottom:1px solid var(--border)}section:last-of-type{border-bottom:none}
+h2{font-size:20px;color:#fff;margin-bottom:20px;display:flex;align-items:center;gap:10px}
+h2::before{content:"";width:4px;height:20px;background:var(--accent);display:inline-block;border-radius:2px}
+h3{font-size:15px;color:var(--accent2);margin:16px 0 10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.card{background:var(--ink2);border:1px solid var(--border);border-radius:6px;padding:20px}
+.card h4{color:#fff;font-size:14px;margin-bottom:6px}.card p{color:var(--text2);font-size:12px}
+.card .num{font-size:24px;color:var(--accent);font-weight:700}
+.arch-diagram{background:var(--ink2);border:1px solid var(--border);border-radius:6px;padding:32px;overflow-x:auto;margin:16px 0}
+.flow{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:center}
+.flow .box{background:var(--ink3);border:1px solid var(--border);border-radius:4px;padding:12px 18px;text-align:center;min-width:130px;font-size:12px;color:#fff}
+.flow .box.primary{border-color:var(--accent);background:rgba(200,66,10,0.1)}
+.flow .box.green{border-color:var(--green);background:rgba(46,204,113,0.06)}
+.flow .box.blue{border-color:var(--blue);background:rgba(52,152,219,0.06)}
+.flow .box.purple{border-color:var(--purple);background:rgba(155,89,182,0.06)}
+.flow .box.yellow{border-color:var(--yellow);background:rgba(241,196,15,0.06)}
+.flow .box.red{border-color:var(--red);background:rgba(231,76,60,0.06)}
+.flow .box small{display:block;color:var(--text2);font-size:10px;margin-top:4px}
+.flow .arrow{color:var(--accent);font-size:18px;font-weight:700}
+.flow-col{display:flex;flex-direction:column;align-items:center;gap:8px}
+.flow-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center}
+.arrow-down{color:var(--accent);font-size:18px}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+th{text-align:left;padding:10px 12px;background:var(--ink2);color:var(--accent2);border:1px solid var(--border);font-weight:600}
+td{padding:10px 12px;border:1px solid var(--border);color:var(--text)}
+tr:hover td{background:var(--ink2)}
+code{background:var(--ink3);padding:2px 6px;border-radius:3px;font-size:12px;color:var(--accent2)}
+pre{background:var(--ink2);border:1px solid var(--border);border-radius:6px;padding:16px;overflow-x:auto;font-size:12px;line-height:1.6;margin:12px 0}
+.checklist{list-style:none;padding:0}
+.checklist li{padding:8px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:13px}
+.checklist li::before{content:"[ ]";color:var(--accent);font-weight:700;font-size:12px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:768px){.grid-2,.cards{grid-template-columns:1fr}}
+footer{border-top:1px solid var(--border);padding:24px 0;text-align:center;color:var(--text2);font-size:11px}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+<h1><span>//</span> terraform-aws-waf</h1>
+<p class="sub">AWS WAFv2 Web ACLs with managed rules, rate limiting, geoblocking, Bot Control, IP sets, custom rules, and logging.</p>
+<div>
+<span class="badge badge-tf">Terraform &ge; 1.0</span>
+<span class="badge badge-aws">AWS &ge; 4.0</span>
+<span class="badge badge-mit">MIT License</span>
+</div>
+</header>
+
+<section>
+<h2>Executive Summary</h2>
+<p>This module creates and manages AWS WAFv2 Web ACLs with comprehensive protection capabilities. It supports AWS Managed Rule Groups (Common Rule Set, SQL injection, known bad inputs, admin protection, IP reputation, and more), AWS Bot Control with COMMON or TARGETED inspection, rate-based rules with IP aggregation and scope-down statements, IP set reference rules for allow/block lists, geo match rules for country-based blocking, and fully custom rules with byte match, geo match, and size constraint statements. Logging is supported to Kinesis Firehose, CloudWatch Logs, or S3 with field redaction. Web ACL associations attach to ALB, API Gateway, AppSync, and Cognito resources. Both REGIONAL and CLOUDFRONT scopes are supported.</p>
+</section>
+
+<section>
+<h2>Overview</h2>
+<div class="cards">
+<div class="card"><div class="num">6</div><h4>Rule Types</h4><p>Managed, Bot Control, Rate Limit, IP Set, Geo Match, Custom</p></div>
+<div class="card"><div class="num">4</div><h4>Resources</h4><p>Web ACL, Logging Config, CloudWatch Log Group, Web ACL Association</p></div>
+<div class="card"><div class="num">3</div><h4>Log Destinations</h4><p>Kinesis Firehose, CloudWatch Logs, S3 Bucket</p></div>
+<div class="card"><div class="num">10+</div><h4>Managed Rule Groups</h4><p>CRS, SQLi, Linux, Windows, PHP, WordPress, IP Reputation, Anonymous IP, Bot Control, ATP, ACFP</p></div>
+</div>
+</section>
+
+<section>
+<h2>Architecture Diagram</h2>
+<div class="arch-diagram">
+<div class="flow-col">
+<div class="flow-row">
+<div class="box blue">Client Request<small>HTTP/S traffic</small></div>
+</div>
+<div class="arrow-down">&darr;</div>
+<div class="flow-row">
+<div class="box">CloudFront / ALB / API GW<small>Protected resource</small></div>
+</div>
+<div class="arrow-down">&darr;</div>
+<div class="flow-row">
+<div class="box primary">WAFv2 Web ACL<small>Rule evaluation pipeline</small></div>
+</div>
+<div class="arrow-down">&darr;</div>
+<div class="flow-row">
+<div class="box purple">Managed Rules<small>CRS, SQLi, Bad Inputs</small></div>
+<div class="box yellow">Bot Control<small>COMMON / TARGETED</small></div>
+<div class="box red">Rate Limiting<small>IP-based throttling</small></div>
+</div>
+<div class="flow-row" style="margin-top:8px">
+<div class="box blue">IP Set Rules<small>Allow / Block lists</small></div>
+<div class="box">Geo Match<small>Country blocking</small></div>
+<div class="box green">Custom Rules<small>Byte / Size match</small></div>
+</div>
+<div class="arrow-down">&darr;</div>
+<div class="flow-row">
+<div class="box green">ALLOW<small>Forward to app</small></div>
+<div class="box red">BLOCK<small>403 Forbidden</small></div>
+<div class="box yellow">COUNT<small>Log only</small></div>
+</div>
+<div class="arrow-down">&darr;</div>
+<div class="flow-row">
+<div class="box blue">CloudWatch Logs<small>Auto-created</small></div>
+<div class="box blue">Kinesis Firehose<small>Streaming</small></div>
+<div class="box blue">S3 Bucket<small>Archival</small></div>
+</div>
+</div>
+</div>
+</section>
+
+<section>
+<h2>Component Breakdown</h2>
+<table>
+<tr><th>Component</th><th>Resource</th><th>Purpose</th></tr>
+<tr><td>Web ACL</td><td><code>aws_wafv2_web_acl</code></td><td>Central rule evaluation engine with configurable default action</td></tr>
+<tr><td>Managed Rules</td><td>managed_rule_group_statement</td><td>AWS-curated rules: CRS, SQLi, Known Bad Inputs, Admin Protection, IP Reputation</td></tr>
+<tr><td>Bot Control</td><td>AWSManagedRulesBotControlRuleSet</td><td>Bot detection with COMMON (general) or TARGETED (advanced) inspection</td></tr>
+<tr><td>Rate Limiting</td><td>rate_based_statement</td><td>IP-based request throttling with optional geo scope-down</td></tr>
+<tr><td>IP Set Rules</td><td>ip_set_reference_statement</td><td>Allow/block based on IP set ARN references</td></tr>
+<tr><td>Geo Match</td><td>geo_match_statement</td><td>Country-code-based blocking/allowing</td></tr>
+<tr><td>Custom Rules</td><td>byte_match / size_constraint / geo</td><td>Custom inspection of URI, query string, headers, body</td></tr>
+<tr><td>Logging</td><td><code>aws_wafv2_web_acl_logging_configuration</code></td><td>Log to Firehose, CloudWatch, or S3 with field redaction</td></tr>
+<tr><td>Association</td><td><code>aws_wafv2_web_acl_association</code></td><td>Attach Web ACL to ALB, API Gateway, AppSync, Cognito</td></tr>
+</table>
+</section>
+
+<section>
+<h2>Data Flow</h2>
+<div class="arch-diagram">
+<div class="flow">
+<div class="box blue">Client</div>
+<div class="arrow">&rarr;</div>
+<div class="box">ALB / CloudFront</div>
+<div class="arrow">&rarr;</div>
+<div class="box primary">WAF Rules (priority order)</div>
+<div class="arrow">&rarr;</div>
+<div class="box green">Application</div>
+</div>
+</div>
+<p style="margin-top:8px;color:var(--text2);font-size:13px">Rules are evaluated in priority order (lowest number first). The first matching rule determines the action (ALLOW, BLOCK, or COUNT). If no rule matches, the default action applies. All evaluations are logged to the configured destination with CloudWatch metrics enabled per-rule for visibility.</p>
+</section>
+
+<section>
+<h2>Security Controls</h2>
+<div class="grid-2">
+<div class="card"><h4>OWASP Top 10 Coverage</h4><p>AWSManagedRulesCommonRuleSet provides protection against XSS, SQLi, SSRF, and other OWASP Top 10 threats</p></div>
+<div class="card"><h4>Log4j / Known Exploits</h4><p>AWSManagedRulesKnownBadInputsRuleSet blocks Log4Shell and other known vulnerability patterns</p></div>
+<div class="card"><h4>Bot Mitigation</h4><p>Bot Control with COMMON or TARGETED inspection levels for automated traffic management</p></div>
+<div class="card"><h4>DDoS Protection</h4><p>Rate-based rules throttle abusive IPs, geo-blocking restricts traffic by country</p></div>
+<div class="card"><h4>Log Redaction</h4><p>Sensitive fields (authorization headers, query strings) can be redacted from WAF logs</p></div>
+<div class="card"><h4>Per-Rule Metrics</h4><p>CloudWatch metrics and sampled requests enabled on every rule for full observability</p></div>
+</div>
+</section>
+
+<section>
+<h2>Industry Adaptation</h2>
+<table>
+<tr><th>Industry</th><th>Configuration</th></tr>
+<tr><td>E-Commerce</td><td>CRS + SQLi rules, Bot Control (TARGETED), rate limiting on checkout, geo-blocking</td></tr>
+<tr><td>Financial Services</td><td>CRS + Admin Protection + ATP for account takeover, IP allowlists for partner APIs</td></tr>
+<tr><td>SaaS / API</td><td>Rate limiting per endpoint, Known Bad Inputs, custom rules for API abuse patterns</td></tr>
+<tr><td>Media / Content</td><td>Bot Control for scraping prevention, geo restrictions for licensing, ACFP for fake accounts</td></tr>
+<tr><td>Healthcare</td><td>CRS + Admin Protection, IP allowlists, log redaction for PHI fields</td></tr>
+</table>
+</section>
+
+<section>
+<h2>Production Readiness Checklist</h2>
+<ul class="checklist">
+<li>Enable AWSManagedRulesCommonRuleSet as the baseline managed rule group</li>
+<li>Add AWSManagedRulesKnownBadInputsRuleSet for Log4j and known exploit protection</li>
+<li>Enable WAF logging with <code>enable_logging = true</code></li>
+<li>Start managed rules in COUNT mode, then switch to NONE (enforce) after review</li>
+<li>Configure rate limiting for public-facing endpoints</li>
+<li>Add IP reputation rules (AmazonIpReputationList)</li>
+<li>Redact sensitive headers (authorization, cookies) from logs</li>
+<li>Associate Web ACL with all public-facing ALBs and API Gateways</li>
+<li>Set up CloudWatch dashboards for WAF metrics</li>
+<li>Monitor Web ACL capacity units to stay within 1,500 WCU limit</li>
+<li>Enable Bot Control for applications with bot traffic concerns</li>
+<li>Use geo-blocking for traffic from high-risk countries</li>
+</ul>
+</section>
+
+<section>
+<h2>Configuration Reference</h2>
+<h3>Required Variables</h3>
+<table>
+<tr><th>Variable</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>name</code></td><td>string</td><td>Name of the WAFv2 Web ACL</td></tr>
+</table>
+<h3>Key Optional Variables</h3>
+<table>
+<tr><th>Variable</th><th>Default</th><th>Description</th></tr>
+<tr><td><code>scope</code></td><td>"REGIONAL"</td><td>REGIONAL or CLOUDFRONT</td></tr>
+<tr><td><code>default_action</code></td><td>"allow"</td><td>Default action (allow or block)</td></tr>
+<tr><td><code>managed_rule_groups</code></td><td>[]</td><td>List of AWS managed rule groups</td></tr>
+<tr><td><code>enable_bot_control</code></td><td>false</td><td>Enable Bot Control</td></tr>
+<tr><td><code>bot_control_inspection_level</code></td><td>"COMMON"</td><td>COMMON or TARGETED</td></tr>
+<tr><td><code>rate_limit_rules</code></td><td>[]</td><td>Rate-based rules</td></tr>
+<tr><td><code>ip_set_rules</code></td><td>[]</td><td>IP set reference rules</td></tr>
+<tr><td><code>geo_match_rules</code></td><td>[]</td><td>Geo match / country blocking rules</td></tr>
+<tr><td><code>custom_rules</code></td><td>[]</td><td>Custom byte/size/geo rules</td></tr>
+<tr><td><code>enable_logging</code></td><td>true</td><td>Enable WAF logging</td></tr>
+<tr><td><code>resource_arns</code></td><td>[]</td><td>ARNs of resources to associate</td></tr>
+</table>
+<h3>AWS Managed Rule Groups Reference</h3>
+<table>
+<tr><th>Category</th><th>Rule Group Name</th></tr>
+<tr><td>Baseline</td><td><code>AWSManagedRulesCommonRuleSet</code>, <code>AWSManagedRulesAdminProtectionRuleSet</code>, <code>AWSManagedRulesKnownBadInputsRuleSet</code></td></tr>
+<tr><td>SQLi / LFI</td><td><code>AWSManagedRulesSQLiRuleSet</code>, <code>AWSManagedRulesLinuxRuleSet</code>, <code>AWSManagedRulesUnixRuleSet</code></td></tr>
+<tr><td>Platform</td><td><code>AWSManagedRulesWindowsRuleSet</code>, <code>AWSManagedRulesPHPRuleSet</code>, <code>AWSManagedRulesWordPressRuleSet</code></td></tr>
+<tr><td>IP Reputation</td><td><code>AWSManagedRulesAmazonIpReputationList</code>, <code>AWSManagedRulesAnonymousIpList</code></td></tr>
+<tr><td>Bot / Fraud</td><td><code>AWSManagedRulesBotControlRuleSet</code>, <code>AWSManagedRulesATPRuleSet</code>, <code>AWSManagedRulesACFPRuleSet</code></td></tr>
+</table>
+</section>
+
+<section>
+<h2>Deployment</h2>
+<pre>
+module "waf" {
+  source = "github.com/kogunlowo123/terraform-aws-waf"
+
+  name  = "my-web-acl"
+  scope = "REGIONAL"
+
+  managed_rule_groups = [
+    {
+      name            = "AWSManagedRulesCommonRuleSet"
+      priority        = 10
+      override_action = "none"
+      excluded_rules  = []
+    },
+    {
+      name            = "AWSManagedRulesKnownBadInputsRuleSet"
+      priority        = 20
+      override_action = "none"
+      excluded_rules  = []
+    }
+  ]
+
+  rate_limit_rules = [
+    {
+      name     = "global-rate-limit"
+      priority = 100
+      rate     = 2000
+      action   = "block"
+    }
+  ]
+
+  resource_arns = [aws_lb.main.arn]
+
+  tags = { Environment = "production" }
+}
+</pre>
+</section>
+
+<section>
+<h2>Links</h2>
+<table>
+<tr><td><a href="https://docs.aws.amazon.com/waf/latest/developerguide/what-is-aws-waf.html">AWS WAFv2 Documentation</a></td></tr>
+<tr><td><a href="https://docs.aws.amazon.com/waf/latest/developerguide/aws-managed-rule-groups.html">AWS Managed Rule Groups</a></td></tr>
+<tr><td><a href="https://docs.aws.amazon.com/waf/latest/developerguide/waf-bot-control.html">AWS Bot Control</a></td></tr>
+<tr><td><a href="https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/wafv2_web_acl">Terraform aws_wafv2_web_acl</a></td></tr>
+<tr><td><a href="https://owasp.org/www-project-top-ten/">OWASP Top 10</a></td></tr>
+</table>
+</section>
+
+<footer>
+<p>terraform-aws-waf | Architecture Documentation | Generated 2026-03-15</p>
+</footer>
+
+</div>
+</body>
+</html>
