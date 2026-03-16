@@ -97,7 +97,13 @@ resource "aws_wafv2_web_acl" "this" {
   # Rate Limit Rules
   # --------------------------------------------------------------------------
   dynamic "rule" {
-    for_each = local.rate_limit_rules
+    for_each = [for i, r in var.rate_limit_rules : {
+      name                 = r.name != "" ? r.name : "rate-limit-${i}"
+      priority             = r.priority != null ? r.priority : (300 + i)
+      rate                 = r.rate
+      action               = r.action
+      scope_down_statement = r.scope_down_statement
+    }]
     content {
       name     = rule.value.name
       priority = rule.value.priority
@@ -148,7 +154,12 @@ resource "aws_wafv2_web_acl" "this" {
   # IP Set Rules
   # --------------------------------------------------------------------------
   dynamic "rule" {
-    for_each = local.ip_set_rules
+    for_each = [for i, r in var.ip_set_rules : {
+      name       = r.name != "" ? r.name : "ip-set-${i}"
+      ip_set_arn = r.ip_set_arn
+      action     = r.action
+      priority   = r.priority
+    }]
     content {
       name     = rule.value.name
       priority = rule.value.priority
@@ -186,7 +197,12 @@ resource "aws_wafv2_web_acl" "this" {
   # Geo Match Rules (Geoblocking)
   # --------------------------------------------------------------------------
   dynamic "rule" {
-    for_each = local.geo_match_rules
+    for_each = [for i, r in var.geo_match_rules : {
+      name          = r.name != "" ? r.name : "geo-match-${i}"
+      country_codes = r.country_codes
+      action        = r.action
+      priority      = r.priority != null ? r.priority : (200 + i)
+    }]
     content {
       name     = rule.value.name
       priority = rule.value.priority
@@ -333,7 +349,7 @@ resource "aws_wafv2_web_acl" "this" {
     sampled_requests_enabled   = true
   }
 
-  tags = local.tags
+  tags = var.tags
 }
 
 ###############################################################################
@@ -345,7 +361,7 @@ resource "aws_cloudwatch_log_group" "waf" {
   name              = "aws-waf-logs-${var.name}"
   retention_in_days = 90
 
-  tags = local.tags
+  tags = var.tags
 }
 
 ###############################################################################
